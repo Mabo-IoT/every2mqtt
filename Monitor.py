@@ -133,44 +133,24 @@ class SysMonitor:
         return smemory
 
     #获取网卡详情及IP地址
-    '''
-    {'lo': [snicaddr(family=<AddressFamily.AF_INET: 2>, address='127.0.0.1', netmask='255.0.0.0', broadcast='127.0.0.1', ptp=None),
-        snicaddr(family=<AddressFamily.AF_INET6: 10>, address='::1', netmask='ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff', broadcast=None, ptp=None),
-        snicaddr(family=<AddressFamily.AF_LINK: 17>, address='00:00:00:00:00:00', netmask=None, broadcast='00:00:00:00:00:00', ptp=None)],
-     'wlan0': [snicaddr(family=<AddressFamily.AF_INET: 2>, address='192.168.1.3', netmask='255.255.255.0', broadcast='192.168.1.255', ptp=None),
-           snicaddr(family=<AddressFamily.AF_INET6: 10>, address='fe80::c685:8ff:fe45:641%wlan0', netmask='ffff:ffff:ffff:ffff::', broadcast=None, ptp=None),
-           snicaddr(family=<AddressFamily.AF_LINK: 17>, address='c4:85:08:45:06:41', netmask=None, broadcast='ff:ff:ff:ff:ff:ff', ptp=None)]}
-    '''
     def getIfconfig(self):
         lista = []
-        tempobj = {"name":"","macaddr":"","ipaddr":"", "netmask":""}
-        getinfo = psutil.net_if_addrs()
+        # 获取网卡信息
+        nicinfo = psutil.net_if_addrs()
+        # 系统不同取值不同的变量
+        locate = 'AF_PACKET'
         if self.platform == 'windows':
-            for item in getinfo.items():
-                if len(item[1]) > 1:
-                    tempobj['name'] = item[0]
-                    tempobj['macaddr'] = item[1][0][1]
-                    tempobj['ipaddr'] = item[1][1][1]
-                    tempobj['netmask'] = item[1][1][2]
-                elif len(item[1]) == 1:
-                    tempobj['name'] = item[0]
-                    tempobj['macaddr'] = item[1][0][1]
-                    tempobj['ipaddr'] = ''
-                    tempobj['netmask'] = item[1][0][2]
-                lista.append(copy.deepcopy(tempobj))
-        if self.platform == 'linux':
-            for item in getinfo.items():
-                if len(item[1]) > 1:
-                    tempobj['name'] = item[0]
-                    tempobj['macaddr'] = item[1][1][1]
-                    tempobj['ipaddr'] = item[1][0][1]
-                    tempobj['netmask'] = item[1][1][2]
-                elif len(item[1]) == 1:
-                    tempobj['name'] = item[0]
-                    tempobj['macaddr'] = item[1][0][1]
-                    tempobj['ipaddr'] = ''
-                    tempobj['netmask'] = item[1][0][2]
-                lista.append(copy.deepcopy(tempobj))
+            locate = 'AF_LINK'
+        for name, datas in nicinfo.items():
+            cache = {'name': '', 'macaddr': '', 'ipaddr': '', 'netmask': ''}
+            cache['name'] = name
+            for data in datas:
+                if data.family.name == 'AF_INET':
+                    cache['ipaddr'] = data.address
+                    cache['netmask'] = data.netmask
+                elif data.family.name == locate:
+                    cache['macaddr'] = data.address
+            lista.append(cache)
         return lista
 
     def genSystemInfo(self):
@@ -209,3 +189,7 @@ class SysMonitor:
             os.execl(python, '"' + python + '"', filepath)
         elif self.platform == 'linux':
             os.execl(python, python, filepath)
+
+if __name__ == "__main__":
+    mo = SysMonitor()
+    print(mo.getIfconfig())
